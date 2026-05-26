@@ -5,8 +5,10 @@ import kr.ac.hansung.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
@@ -53,14 +55,29 @@ class ProductControllerTest {
     @WithMockUser(roles = "USER")
     @DisplayName("인증된 사용자 - 상품 목록 조회 성공 (200)")
     void listProducts_authenticated_returns200() throws Exception {
-        given(productService.findAll()).willReturn(List.of(
-            new Product("Spring Boot 4 교재", 35000, "실습서", 50)
-        ));
+        List<Product> products = List.of(new Product("Spring Boot 4 교재", 35000, "실습서", 50));
+        given(productService.getProducts(any(PageRequest.class)))
+            .willReturn(new PageImpl<>(products, PageRequest.of(0, 5), products.size()));
 
         mockMvc.perform(get("/products"))
             .andExpect(status().isOk())
             .andExpect(view().name("products/list"))
-            .andExpect(model().attributeExists("products"));
+            .andExpect(model().attributeExists("productPage"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("인증된 사용자 - 상품명 키워드 검색 성공 (200)")
+    void searchProducts_authenticated_returns200() throws Exception {
+        List<Product> products = List.of(new Product("Spring Boot 4 교재", 35000, "실습서", 50));
+        given(productService.searchProducts(eq("Spring"), any(PageRequest.class)))
+            .willReturn(new PageImpl<>(products, PageRequest.of(0, 5), products.size()));
+
+        mockMvc.perform(get("/products").param("keyword", "Spring"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/list"))
+            .andExpect(model().attributeExists("productPage"))
+            .andExpect(model().attribute("keyword", "Spring"));
     }
 
     @Test
